@@ -192,6 +192,17 @@ fn pattern_segment<'a>(
     env: &mut Env<'a>,
     guards: &mut Vec<Document<'a>>,
 ) -> Document<'a> {
+    // Create the output for the size before a potential variable declaration so that the shadowed name is not used
+    let pre_shadowed_size = options.iter().find_map(|option| match option {
+        BitArrayOption::Size { value, .. } => {
+            Some(
+                ":".to_doc()
+                    .append(print(value, vars, define_variables, env, guards)),
+            )
+        }
+        _ => None,
+    });
+
     let document = match value {
         // Skip the normal <<value/utf8>> surrounds
         Pattern::String { value, .. } => value.to_doc().surround("\"", "\""),
@@ -206,12 +217,7 @@ fn pattern_segment<'a>(
         _ => panic!("Pattern segment match not recognised"),
     };
 
-    let size = |value: &'a TypedPattern, env: &mut Env<'a>| {
-        Some(
-            ":".to_doc()
-                .append(print(value, vars, define_variables, env, guards)),
-        )
-    };
+    let size = |_value: &'a TypedPattern, _env: &mut Env<'a>| pre_shadowed_size.clone();
 
     let unit = |value: &'a u8| Some(Document::String(format!("unit:{value}")));
 
